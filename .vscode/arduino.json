@@ -1,0 +1,7 @@
+{
+    "programmer": "ArduinoISP",
+    "board": "arduino:avr:pro",
+    "configuration": "cpu=16MHzatmega328",
+    "port": "COM15",
+    "sketch": "MazeRunner.ino"
+}

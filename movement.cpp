@@ -2,12 +2,18 @@
 #include "motors.h"
 #include "gyro.h"
 
+#define FORWARD 1
+#define ROTATING 2
+
 int prevError;
 int prevAngleError;
+int prevRotationError;
 long integral = 0;
 long angleIntegral = 0;
 long rotateIntegral = 0;
-char robotState;
+char movementState = FORWARD;
+
+
 
 int longTermSpeedTarget = 0;
 int shortTermSpeedTarget = 0;
@@ -15,34 +21,24 @@ int shortTermSpeedTarget = 0;
 int angleOffset = 0;
 
 void resetAngle(){
-  angleOffset = 10*gyro.getAngleZ();
+  angleOffset = gyro_getAngle();
+  angleIntegral = 0;
+  integral = 0;
 }
 
-long ticksTarget;
+
+int angleTarget;
+
+int RticksCount = 0;
+int LticksCount = 0;
+
 
 void updatePID() {
   motors_recordSpeed();
-  Serial.println(gyro_getAngle());
-  if(robotState == FORWARD_AND_STOP){
-      if(ticksTarget < (totalLeftEncoderCount + totalRightEncoderCount)/2){
-          robotState = STOP;
-          Serial.println("Destination reached");
-          Serial.println();
-      }
-  }
-  if (robotState == STOP){
-    motors_break();
-  }
-  else if (robotState == FORWARD || robotState == FORWARD_AND_STOP) {
-    //ACCEL mm/s / s
-   /* Serial.print(longTermSpeedTarget);
-    Serial.print(" ");
-    Serial.print(shortTermSpeedTarget);
-    Serial.print(" ");
-    Serial.println((leftMotorSpeed + rightMotorSpeed) / 2);*/
 
-
-    if (shortTermSpeedTarget < longTermSpeedTarget) {
+  if(movementState == FORWARD){
+  if(longTermSpeedTarget > 0){
+    if (shortTermSpeedTarget < longTermSpeedTarget) { //Update shortTermSpeedTarget based on current longTermSpeedTarget and ACCEL
       shortTermSpeedTarget += ((long)ACCEL * ENCODER_SPEED_SAMPLE_INTERVAL) / 1000;
       if (shortTermSpeedTarget > longTermSpeedTarget) {
         shortTermSpeedTarget = longTermSpeedTarget;
@@ -54,13 +50,12 @@ void updatePID() {
         shortTermSpeedTarget = longTermSpeedTarget;
       }
     }
-
-    if (shortTermSpeedTarget == 0) {
-      motors_break();
-    }
-    else {
-
-
+  }
+  else {
+    shortTermSpeedTarget = 0;
+    motors_break();
+  }
+  if(shortTermSpeedTarget > 0){
       int error = shortTermSpeedTarget - (leftMotorSpeed + rightMotorSpeed) / 2;
 
       if (abs(integral + error) < 255 / Ki)
@@ -68,9 +63,11 @@ void updatePID() {
       int power = Kp * error + Kd * (error - prevError) + Ki * integral;
       prevError = error;
 
-      int angleError = (-gyro_getAngle() - angleOffset);
+      int angleError = (-gyro_getAngle() + angleOffset);
 
-      if (abs(angleIntegral + angleError) < 255 / Ki)
+     // Serial.println(angleError);
+
+      if (abs(angleIntegral + angleError) < 255 / Kig)
         angleIntegral += angleError;
       int anglePower = Kpg * angleError + Kdg * (angleError - prevAngleError) + Kig * angleIntegral;
       prevAngleError = angleError;
@@ -88,27 +85,44 @@ void updatePID() {
 
     }
   }
+  else if(movementState == TURNING){
+      
+      int error =  (angleTarget*0.31) - (totalLeftEncoderCount + totalRightEncoderCount)/2;
+
+      if (abs(rotateIntegral + error) < 255 / Ki_rot)
+        rotateIntegral += error;
+      int power = Kpg_rot * error + Kdg_rot * (error - prevRotationError) + Ki_rot * rotateIntegral;
+      prevRotationError = error;
+
+      int lpower = power;
+      int rpower = -power;
+
+      if (lpower > MAX_MOTOR_POWER)lpower = MAX_MOTOR_POWER;
+      else if (lpower < -MAX_MOTOR_POWER)lpower = -MAX_MOTOR_POWER;
+
+      if (rpower > MAX_MOTOR_POWER)rpower = MAX_MOTOR_POWER;
+      else if (rpower < -MAX_MOTOR_POWER)rpower = -MAX_MOTOR_POWER;
+
+      motors_setPower(lpower, rpower);
+      Serial.println(error);
+      if(error < 0){
+        
+        motors_break();
+        movementState = FORWARD;
+      }
+  }
 }
 
 void forward(int robotSpeed) {
   longTermSpeedTarget = robotSpeed;
-  robotState = FORWARD;
+  movementState = FORWARD;
 }
 
-void forwardFor(int robotSpeed, int distance){
-  longTermSpeedTarget = robotSpeed;
-  ticksTarget = ((totalLeftEncoderCount + totalRightEncoderCount)/2) + distance*5.94;
-  robotState = FORWARD_AND_STOP;
-  Serial.println("Starting Forward for");
-  Serial.print("Current position: ");
-  Serial.println((totalLeftEncoderCount + totalRightEncoderCount)/2);
-  Serial.print("Destination: ");
-  Serial.println(ticksTarget);  
-  Serial.println();
+void turnFor(int angle){
+  movementState = TURNING;
+  resetAngle();
+  rotateIntegral = 0;
+  angleTarget = angle*10;
+  totalLeftEncoderCount = 0;
+  totalRightEncoderCount = 0;
 }
-
-void turn(int rotateSpeed, int angle){
-  //longTermRotateSpeedTarget = angleSpeed;
-  robotState = ROTATING;
-}
-

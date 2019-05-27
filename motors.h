@@ -4,7 +4,7 @@
 
 #include <Arduino.h>
 
-#define MAX_MOTOR_POWER 255
+#define MAX_MOTOR_POWER 100
 #define ENCODER_SPEED_SAMPLE_INTERVAL 30 //ms
 
 #define MOT_LEFT_1     5

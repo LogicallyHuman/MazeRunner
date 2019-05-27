@@ -65,12 +65,12 @@ void motors_setPower(int leftSpeed, int rightSpeed) {
 }
 
 void motors_break() {
-  digitalWrite(MOT_LEFT_1, LOW);
-  digitalWrite(MOT_LEFT_2, LOW);
-  digitalWrite(MOT_RIGHT_1, LOW);
-  digitalWrite(MOT_RIGHT_2, LOW);
-  digitalWrite(MOT_PWM_LEFT, LOW);
-  digitalWrite(MOT_PWM_RIGHT, LOW);
+  digitalWrite(MOT_LEFT_1, HIGH);
+  digitalWrite(MOT_LEFT_2, HIGH);
+  digitalWrite(MOT_RIGHT_1, HIGH);
+  digitalWrite(MOT_RIGHT_2, HIGH);
+  digitalWrite(MOT_PWM_LEFT, HIGH);
+  digitalWrite(MOT_PWM_RIGHT, HIGH);
 }
 
 

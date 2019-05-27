@@ -64,13 +64,13 @@ void sensors_init(){
   sensorFront.setTimeout(TIMEOUT);
   sensorRightDiag.setTimeout(TIMEOUT);
   sensorRight.setTimeout(TIMEOUT);
-/*
+
   sensorLeft.startContinuous();
   sensorLeftDiag.startContinuous();
   sensorFront.startContinuous();
   sensorRightDiag.startContinuous();
   sensorRight.startContinuous();
-*/
+
   sensorLeft.setMeasurementTimingBudget(TIMING_BUDGET);
   sensorLeftDiag.setMeasurementTimingBudget(TIMING_BUDGET);
   sensorFront.setMeasurementTimingBudget(TIMING_BUDGET);
@@ -82,6 +82,8 @@ void sensors_init(){
   sensorFront.setSignalRateLimit(SIGNAL_RATE_LIMIT);
   sensorRightDiag.setSignalRateLimit(SIGNAL_RATE_LIMIT);
   sensorRight.setSignalRateLimit(SIGNAL_RATE_LIMIT);
+
+
   
 }
 #define LEFT       0x1
@@ -108,37 +110,63 @@ void sensors_readAll(int * readings){ //66ms
 
 
 void sensors_startReadAll(){ //66ms
-
+/*
   sensorLeft.startRangeSingleMillimeters();
   sensorLeftDiag.startRangeSingleMillimeters();
   sensorFront.startRangeSingleMillimeters();
   sensorRightDiag.startRangeSingleMillimeters();
   sensorRight.startRangeSingleMillimeters();  
-
+*/
 }
 
 
 void sensors_fetchReadAll(int * readings){ //66ms
+/*
+  int d = sensorLeft.fetchRangeSingleMillimeters();
+  if(d > 0) readings[0] = d; 
 
-  readings[0] = sensorLeft.fetchRangeSingleMillimeters();
-  readings[1] = sensorLeftDiag.fetchRangeSingleMillimeters();
-  readings[2] = sensorFront.fetchRangeSingleMillimeters();
-  readings[3] = sensorRightDiag.fetchRangeSingleMillimeters();
-  readings[4] = sensorRight.fetchRangeSingleMillimeters();
+  d = sensorLeftDiag.fetchRangeSingleMillimeters();
+  if(d > 0) readings[1] = d; 
+
+  d = sensorFront.fetchRangeSingleMillimeters();
+  if(d > 0) readings[2] = d; 
+
+  d = sensorRightDiag.fetchRangeSingleMillimeters();
+  if(d > 0) readings[3] = d; 
+
+  d = sensorRight.fetchRangeSingleMillimeters();
+  if(d > 0) readings[4] = d; 
+
+  */
+  int d = sensorLeft.readRangeContinuousMillimeters();
+  if(d > 0) readings[0] = d; 
+
+  d = sensorLeftDiag.readRangeContinuousMillimeters();
+  if(d > 0) readings[1] = d; 
+
+  d = sensorFront.readRangeContinuousMillimeters();
+  if(d > 0) readings[2] = d; 
+
+  d = sensorRightDiag.readRangeContinuousMillimeters();
+  if(d > 0) readings[3] = d; 
+
+  d = sensorRight.readRangeContinuousMillimeters();
+  if(d > 0) readings[4] = d; 
+ 
 }
 
 int sensors_readLeft(){
-  return sensorLeft.readRangeSingleMillimeters2();
+  return sensorLeft.readRangeSingleMillimeters();
 }
 int sensors_readLeftDiag(){
-  return sensorLeftDiag.readRangeSingleMillimeters2();
+  return sensorLeftDiag.readRangeSingleMillimeters();
 }
 int sensors_readFront(){
-  return sensorFront.readRangeSingleMillimeters2();
+  return sensorFront.readRangeSingleMillimeters();
 }
 int sensors_readRightDiag(){
-  return sensorRightDiag.readRangeSingleMillimeters2();
+  return sensorRightDiag.readRangeSingleMillimeters();
 }
 int sensors_readRight(){
-  return sensorRight.readRangeSingleMillimeters2();
+  return sensorRight.readRangeSingleMillimeters();
 }

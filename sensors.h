@@ -3,7 +3,7 @@
 
 
 #define SIGNAL_RATE_LIMIT 0.8
-#define TIMEOUT 500
+#define TIMEOUT 30
 #define TIMING_BUDGET 20000 //us
 
 #include <Arduino.h>

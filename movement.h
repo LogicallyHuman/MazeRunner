@@ -2,29 +2,28 @@
 #define MOVEMENT_H
 
 #include <Arduino.h>
+#include "sensors.h"
 
 #define Ki  0.04
 #define Kp  0.07
 #define Kd  0
 
 #define Kig  0
-#define Kpg  0.3
-#define Kdg  0.2
+#define Kpg  0.1
+#define Kdg  0.08
 
-#define Ki_rot   0.1
-#define Kpg_rot  0.2
-#define Kdg_rot  0
+#define Ki_rot   0.004
+#define Kpg_rot  0.04
+#define Kdg_rot  0.2
 
 
-#define STOP 0
-#define FORWARD 1
-#define ROTATING 2
-#define FORWARD_AND_STOP 3
+#define STRAIGHT 1
+#define TURNING 2
 
 #define ROTATE_SPEED 90 //degrees/sec
 #define ROTATE_ACCEL 900 //degrees/sec/sec
 
-#define ACCEL 2000
+#define ACCEL 4000
 
 
 #define INTEGRAL_LIMIT 500
@@ -46,11 +45,14 @@ extern int shortTermRotateSpeedTarget;
 
 extern long ticksTarget;
 
+extern char movementState;
 
 void updatePID();
+void resetAngle();
 void forward(int robotSpeed);//Moves robot forward in a straight line at a constant speed
 void forwardFor(int robotSpeed, int distance);
-void turn(int rotateSpeed, int angle);
+void forwardUntil(int robotSpeed, int distanceToWall);
+void turnFor(int angle);
 
 #endif
 
