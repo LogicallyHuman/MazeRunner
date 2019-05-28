@@ -29,7 +29,7 @@ void setup() {
   delay(500);
   //motors_setSpeed(100, 0);
   digitalWrite(LED1, LOW);
-  forward(1500);
+  forward(300);
   sensors_startReadAll();
   delay(50);
 }
@@ -108,7 +108,7 @@ void loop() {
     resetAngle();
     //delay(500);
     state = FORWARDING;
-    forward(1500);
+    forward(300);
   }
 
 

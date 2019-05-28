@@ -4,6 +4,9 @@
 #include <Arduino.h>
 #include "sensors.h"
 
+#define MAX_MOTOR_POWER 200
+#define MAX_MOTOR_TURNING_POWER 150
+
 #define Ki  0.04
 #define Kp  0.07
 #define Kd  0
@@ -12,24 +15,29 @@
 #define Kpg  0.1
 #define Kdg  0.08
 
-#define Ki_rot   0.004
-#define Kpg_rot  0.04
-#define Kdg_rot  0.2
+
+#define Ki_rot   0.04
+#define Kp_rot  0.07
+#define Kd_rot  0
+
+#define Ki_diff   0
+#define Kp_diff  0.1
+#define Kd_diff  0.08
 
 
 #define STRAIGHT 1
 #define TURNING 2
 
-#define ROTATE_SPEED 90 //degrees/sec
-#define ROTATE_ACCEL 900 //degrees/sec/sec
+#define TURNING_SPEED 6000
+#define TURNING_ACCEL 300 
 
 #define ACCEL 4000
 
 
 #define INTEGRAL_LIMIT 500
 
-extern long integral;
-extern long angleIntegral;
+extern unsigned long integral;
+extern unsigned long angleIntegral;
 extern int prevError;
 extern int prevAngleError;
 extern long rotateIntegral;

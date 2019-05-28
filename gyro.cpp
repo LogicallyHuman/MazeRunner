@@ -7,8 +7,7 @@ MPU6050 gyro(Wire);
 
 void gyro_init(){
   gyro.begin();
-  //gyro.setGyroOffsets(-4.2, -0.88, -0.34);
-  gyro.calcGyroOffsets(true);
+  gyro.setGyroOffsets(-4.14, -0.88, -0.36);
 }
 
 int gyro_getAngle(){
