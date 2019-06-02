@@ -8,4 +8,5 @@
 
 void leds_init();
 
+void leds_set(char states);
 #endif

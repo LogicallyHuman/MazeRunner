@@ -1,8 +1,16 @@
 #ifndef SENSORS_H
 #define SENSORS_H
 
+#define LEFT       0x1
+#define LEFT_DIAG  0x2
+#define FRONT      0x4
+#define RIGHT_DIAG 0x8
+#define RIGHT      0x10
 
-#define SIGNAL_RATE_LIMIT 0.8
+
+#define SIGNAL_RATE_LIMIT_DIAGS 0.15
+#define SIGNAL_RATE_LIMIT_SIDES 0.5
+#define SIGNAL_RATE_LIMIT_FRONT 0.5
 #define TIMEOUT 30
 #define TIMING_BUDGET 20000 //us
 
@@ -36,5 +44,6 @@ int sensors_readRight();
 void sensors_readAll(int * readings);
 void sensors_startReadAll();
 void sensors_fetchReadAll(int * readings);
+char sensors_interpretReadings(int * readings);
 #endif
 

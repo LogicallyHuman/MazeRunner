@@ -10,3 +10,11 @@ void leds_init(){
   digitalWrite(LED3, LOW);
   digitalWrite(LED4, LOW);
 }
+
+
+void leds_set(char states){
+    digitalWrite(LED1, states&0b1000);
+    digitalWrite(LED2, states&0b0100);
+    digitalWrite(LED3, states&0b0010);
+    digitalWrite(LED4, states&0b0001);
+}
