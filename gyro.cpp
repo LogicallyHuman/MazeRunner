@@ -14,16 +14,16 @@ Y : -1.42
 Z : -0.82
 */
 int gyro_getAngle() {
-    return gyro.getAngleZ() * 10 - gyroOffset;
+    return gyro.getAngleX() * 10 - gyroOffset;
 }
 
 void gyro_reset() {
-    gyroOffset = gyro.getAngleZ() * 10;
+    gyroOffset = gyro.getAngleX() * 10;
 }
 
 void gyro_readOffsetsFromEEPROM() {
     float x, y, z;  //Read gyro offsets from EEPROM
-    EEPROM.get(0, x);
+     
     EEPROM.get(4, y);
     EEPROM.get(8, z);
     gyro.setGyroOffsets(x, y, z);

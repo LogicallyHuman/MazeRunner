@@ -7,12 +7,12 @@ int prevForwardDifferenceError;
 int prevRotatingSpeedError;
 int prevRotatingDifferenceError;
 
-unsigned long forwardSpeedIntegral = 0;
-unsigned long forwardDifferenceIntegral = 0;
-unsigned long rotatingDifferenceIntegral = 0;
-unsigned long rotatingSpeedIntegral = 0;
+long forwardSpeedIntegral = 0;
+long forwardDifferenceIntegral = 0;
+long rotatingDifferenceIntegral = 0;
+long rotatingSpeedIntegral = 0;
 
-char movementState = FORWARD;
+char movementState = MOTORS_FORWARD;
 char rotatingState;
 
 int longTermForwardSpeedTarget = 0;
@@ -21,6 +21,8 @@ int shortTermRotatingSpeedTarget = 0;
 
 int angleOffset = 0;
 
+int idealSumOfSideDistance;
+
 void resetAngle() {  //TODO: Move to gyro.cpp
     angleOffset = gyro_getAngle();
 }
@@ -28,12 +30,31 @@ void resetAngle() {  //TODO: Move to gyro.cpp
 long rotateTicksTarget;  //TODO: Implement functionality.
 long rotateTicksTraveled = 0;
 
+#define LEFT_SIDE 0
+#define RIGHT_SIDE 1
+bool side = RIGHT_SIDE;
+
 int desiredAngle = 0;
+#define CW 0
+#define CCW 1
 
-void updatePID(int * readings) {         //THIS FUNCTION NEEDS TO BE CALLED PERIODICALLY. TODO: Maybe use a timer to call it.
-    motors_recordSpeed();  //Records motor speed, to leftMotorSpeed and rightMotorSpeed
+char rotateDirection;
 
-    if (movementState == FORWARD) {
+char prevCondition = true;
+long refoundWallMillis = 0;
+
+char juan = 0;
+
+void updatePID(volatile int* readings, volatile char ignoreSensors) {  //THIS FUNCTION NEEDS TO BE CALLED PERIODICALLY. TODO: Maybe use a timer to call it.
+    motors_recordSpeed();                            //Records motor speed, to leftMotorSpeed and rightMotorSpeed
+
+    
+            if(juan == 100){
+                juan = 0;
+                side = !side;
+            }
+
+    if (movementState == MOTORS_FORWARD) {
         if (longTermForwardSpeedTarget > 0) {                                //If desired speed > 0, adjust short term value based on acceleration
             if (shortTermForwardSpeedTarget < longTermForwardSpeedTarget) {  //Update shortTermForwardSpeedTarget based on current longTermForwardSpeedTarget and ACCEL
                 shortTermForwardSpeedTarget += ((long)ACCEL);
@@ -53,32 +74,49 @@ void updatePID(int * readings) {         //THIS FUNCTION NEEDS TO BE CALLED PERI
 
         if (shortTermForwardSpeedTarget > 0) {  //If motors didn't break, or current short term desired speed is > 0
 
+            int modifiedShortTermForwardSpeedTarget;
+            int sideDifference;
+            int static prevSideDifference = 0;
+            int static prevLSensor = 0;
+            int static prevRSensor = 0;
+            char condition = (readings[0] < 160 && readings[4] < 160 && (readings[0] - prevLSensor < 20) && (readings[4] - prevRSensor < 20));
+            if (!prevCondition && condition) {
+                refoundWallMillis = millis();
+            } else if (!condition && prevCondition) {
+                refoundWallMillis = 0;
+            }
+            prevCondition = condition;
+            if (millis() > refoundWallMillis + 170 && condition) {
+                sideDifference = (readings[0] - readings[4]);
+                //if (readings[0] + readings[4] > idealSumOfSideDistance + 1000 || abs(readings[0] - readings[4]) > 5000) {
+                //    modifiedShortTermForwardSpeedTarget = max(shortTermForwardSpeedTarget - 8 * (readings[0] + readings[4] - idealSumOfSideDistance) - 3 * abs(readings[0] - readings[4]), 100);
+                //} else {
+                    modifiedShortTermForwardSpeedTarget = shortTermForwardSpeedTarget;
+                //}
+            } else {
+                sideDifference = 0;
+                modifiedShortTermForwardSpeedTarget = shortTermForwardSpeedTarget;
+            }
+
+            prevLSensor = readings[0];
+            prevRSensor = readings[4];
             //Speed control PID loop
-            int error = shortTermForwardSpeedTarget - (leftMotorSpeed + rightMotorSpeed) / 2;
+            int error = modifiedShortTermForwardSpeedTarget - (leftMotorSpeed + rightMotorSpeed) / 2;
             if (abs(forwardSpeedIntegral + error) < 255 / Ki)
                 forwardSpeedIntegral += error;
             int power = Kp * error + Kd * (error - prevForwardSpeedError) + Ki * forwardSpeedIntegral;
             prevForwardSpeedError = error;
 
             //Angle correction PID loop
-            int sideDifference;
+
             int static angleError = 0;
-            if(readings[0] < 250 && readings[4] < 250){
-                sideDifference = readings[0] - readings[4];
-                digitalWrite(LED1, 1);
-            }
-            else{
-                sideDifference = 0;
-                digitalWrite(LED1, 0);
 
-            }
+            angleError = 0.1 * (angleError - gyro_getAngle()) + 0.9 * (sideDifference);
+            //angleError = sideDifference;
 
-            angleError = 0.05*(angleError - gyro_getAngle()) + 0.95*sideDifference;
-
-
-            if (abs(forwardDifferenceIntegral + angleError) < 255 / Kig)
-                forwardDifferenceIntegral += angleError;
-            int anglePower = Kpg * angleError + Kdg * (angleError - prevForwardDifferenceError) + Kig * forwardDifferenceIntegral;
+            //if (abs(forwardDifferenceIntegral + angleError) < 255 / Kig)
+            //forwardDifferenceIntegral += angleError;
+            int anglePower = Kpg * angleError + Kdg * (angleError - prevForwardDifferenceError) + 0.01 * forwardDifferenceIntegral;
             prevForwardDifferenceError = angleError;
 
             //Calculate motor powers.
@@ -98,67 +136,52 @@ void updatePID(int * readings) {         //THIS FUNCTION NEEDS TO BE CALLED PERI
             motors_setPower(lpower, rpower);  //Update motor powers.
         }
 
-    } else if (movementState == TURNING) {
-        rotateTicksTraveled += (leftMotorSpeed + rightMotorSpeed) / 2;
+    } else if (movementState == MOTORS_TURNING) {
 
-        if (rotateTicksTraveled < rotateTicksTarget) {
-            if (rotateTicksTraveled < TURNING_ACCEL) {
-                shortTermRotatingSpeedTarget = (rotateTicksTraveled * (TURNING_SPEED)) / TURNING_ACCEL;
-            } else if (rotateTicksTarget - rotateTicksTraveled < TURNING_ACCEL) {
-                shortTermRotatingSpeedTarget = TURNING_SPEED + ((rotateTicksTarget - rotateTicksTraveled - TURNING_ACCEL) * (TURNING_SPEED)) / TURNING_ACCEL;
-            } else {
-                shortTermRotatingSpeedTarget = TURNING_SPEED;
-            }
-            if(shortTermRotatingSpeedTarget < TURNING_START_SPEED)
-                shortTermRotatingSpeedTarget = TURNING_START_SPEED;
+        if (shortTermForwardSpeedTarget > 0) {  //If motors didn't break, or current short term desired speed is > 0
 
-            /*
-            #define TURNING_ACCEL2         400
-            #define TURNING_SPEED2         100
-            #define TURNING_START_SPEED2   100
-            
-            int rotationError = desiredAngle - gyro_getAngle();
-            int static prevRotationError;
-            long static rotationIntegralError;
-            char static startedPID = 0;
+            int sideDifference;
+            int static prevSideDifference = 0;
+            int static prevLSensor = 0;
+            int static prevRSensor = 0;
 
-            if (gyro_getAngle() < TURNING_ACCEL2 && !startedPID){
-                shortTermRotatingSpeedTarget = (rotateTicksTraveled*(TURNING_SPEED2))/TURNING_ACCEL2;
-                shortTermRotatingSpeedTarget += TURNING_START_SPEED;
-            }
-            else if(desiredAngle - gyro_getAngle() < TURNING_ACCEL2 || startedPID){
-                rotationIntegralError += rotationError;
-                shortTermRotatingSpeedTarget = 3*rotationError + 0.05*(rotationError - prevRotationError) + 0.01*rotationIntegralError;
-                if(shortTermRotatingSpeedTarget > TURNING_SPEED2 + TURNING_START_SPEED2){
-                    shortTermRotatingSpeedTarget = TURNING_SPEED2 + TURNING_START_SPEED2;
-                }
-                prevRotationError = rotationError;
-                startedPID = 1;
-            }
-            else{
-                shortTermRotatingSpeedTarget = TURNING_SPEED2;
-                shortTermRotatingSpeedTarget += TURNING_START_SPEED2;
-            }*/
+            //Speed control PID loop
+            int error = 600 - (leftMotorSpeed + rightMotorSpeed) / 2;
+            if (abs(forwardSpeedIntegral + error) < 255 / Ki)
+                forwardSpeedIntegral += error;
+            int power = Kp * error + Kd * (error - prevForwardSpeedError) + Ki * forwardSpeedIntegral;
+            prevForwardSpeedError = error;
 
-            //Total motor velocity PID loop
-            int angularSpeedError = shortTermRotatingSpeedTarget - (leftMotorSpeed + rightMotorSpeed) / 2;
-            if (abs(rotatingSpeedIntegral + angularSpeedError) < 255 / Ki_rot)
-                rotatingSpeedIntegral += angularSpeedError;
-            int totalPower = Kp_rot * angularSpeedError + Kd_rot * (angularSpeedError - prevRotatingSpeedError) + Ki_rot * rotatingSpeedIntegral;
-            prevRotatingSpeedError = angularSpeedError;
+            //Angle correction PID loop
+            int angleError = 0;
+            static int prevSide;
 
-            //Same motor speed correction PID loop
-            int motorDifferenceError = leftMotorSpeed - rightMotorSpeed;
-            if (abs(rotatingDifferenceIntegral + motorDifferenceError) < 255 / Kig)
-                rotatingDifferenceIntegral += motorDifferenceError;
-            int differencePower = Kp_diff * motorDifferenceError + Kd_diff * (motorDifferenceError - prevRotatingDifferenceError) + Ki_diff * rotatingDifferenceIntegral;
-            prevRotatingDifferenceError = motorDifferenceError;
+            if(side == RIGHT_SIDE) angleError = (leftMotorSpeed - rightMotorSpeed) - 400;  //Tunear der MOT_DIF + -250
+            if(side == LEFT_SIDE) angleError = (leftMotorSpeed - rightMotorSpeed) + 400;
+            if(side != prevSide)forwardDifferenceIntegral = 0;
+            prevSide = side;
+            //angleError = (leftMotorSpeed - rightMotorSpeed);
+            forwardDifferenceIntegral += angleError;
+            int anglePower = 0 * angleError + Kd_rot * (angleError - prevForwardDifferenceError) + 0.01 * forwardDifferenceIntegral;
+            Serial.print(leftMotorSpeed);
+            Serial.print(" ");
+            Serial.println(rightMotorSpeed);
+            prevForwardDifferenceError = angleError;
 
-            //Calculate motor powers
-            int lpower = -totalPower + differencePower;
-            int rpower = totalPower - differencePower;
+            //Calculate motor powers.
+            int lpower;
+            int rpower;
 
-            if (lpower > MAX_MOTOR_POWER)  //TODO: Move to motors.cpp
+            //if(side == RIGHT_SIDE){
+          //      lpower = power - anglePower;
+           //     rpower = power + anglePower;
+            //}
+            //if(side == LEFT_SIDE) {
+                lpower = power - anglePower;
+                rpower = power + anglePower;
+//            }
+
+            if (lpower > MAX_MOTOR_POWER)  //TODO: Move power limit to motors.cpp
                 lpower = MAX_MOTOR_POWER;
             else if (lpower < -MAX_MOTOR_POWER)
                 lpower = -MAX_MOTOR_POWER;
@@ -168,30 +191,47 @@ void updatePID(int * readings) {         //THIS FUNCTION NEEDS TO BE CALLED PERI
             else if (rpower < -MAX_MOTOR_POWER)
                 rpower = -MAX_MOTOR_POWER;
 
-            motors_setPower(lpower, rpower);  //Set motor powers.
-        } else {
-            movementState = FORWARD;
+            motors_setPower(lpower, rpower);  //Update motor powers.
         }
+
+    } else {
+        movementState = MOTORS_FORWARD;
     }
 }
 
-//Set movement state to FORWARD. Tries to mantain a constant forward speed.
+//Set movement state to MOTORS_FORWARD. Tries to mantain a constant forward speed.
 //Accelerates linearly at ACCEL rate until robotSpeed speed is reached.
 void forward(int robotSpeed) {
     longTermForwardSpeedTarget = robotSpeed;
-    movementState = FORWARD;
+    forwardDifferenceIntegral = 0;
+    movementState = MOTORS_FORWARD;
 }
 
 //Rotates on axis. TODO: Implement correct acceletation and deacceleration. And stop when angle is reached.
 void turnFor(int angle) {
-    movementState = TURNING;
+    movementState = MOTORS_TURNING;
     rotatingState = ROT_ACCEL_STATE;
     desiredAngle = angle * 10;
     gyro_reset();
     rotatingDifferenceIntegral = 0;
     rotatingSpeedIntegral = 0;
-    rotateTicksTarget = angle * 20;  //Magic degrees to (lmotorticks + rmotorticls)/2 proportionality constant.
+    rotateTicksTarget = abs(angle * 20);  //Magic degrees to (lmotorticks + rmotorticls)/2 proportionality constant.
+    if (angle > 0) {
+        rotateDirection = CCW;
+    } else {
+        rotateDirection = CW;
+    }
     totalLeftEncoderCount = 0;
     totalRightEncoderCount = 0;
+    rotateTicksTraveled = 0;
+}
+
+void turnFor2() {
+    forwardDifferenceIntegral = 0;
+    movementState = MOTORS_TURNING;
+    gyro_reset();
+    rotatingDifferenceIntegral = 0;
+    rotatingSpeedIntegral = 0;
+    rotateTicksTarget = 40000;
     rotateTicksTraveled = 0;
 }

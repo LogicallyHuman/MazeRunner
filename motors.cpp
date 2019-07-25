@@ -6,14 +6,14 @@ int rightMotorSpeed = 0;
 volatile unsigned int leftEncoderCount = 0;
 unsigned long totalLeftEncoderCount = 0;
 void leftEncoderInterrupt() {
-    leftEncoderCount++;
+    leftEncoderCount += 2;
 }
 
 volatile unsigned int rightEncoderCount = 0;
 unsigned long totalRightEncoderCount = 0;
 
 void rightEncoderInterrupt() {
-    rightEncoderCount++;
+    rightEncoderCount += 2;
 }
 
 void motors_init() {

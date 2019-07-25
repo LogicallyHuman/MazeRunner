@@ -115,7 +115,7 @@ void sensors_startReadAll(){ //66ms
 }
 
 
-void sensors_fetchReadAll(int * readings){ //66ms
+void sensors_fetchReadAll(volatile int * readings){ //66ms
 /*
   int d = sensorLeft.fetchRangeSingleMillimeters();
   if(d > 0) readings[0] = d; 
@@ -167,8 +167,11 @@ int sensors_readRight(){
 }
 
 
-#define FRONT_LOW_THRESHOLD   350
-#define FRONT_HIGH_THRESHOLD  360
+#define FRONT_LOW_THRESHOLD2  290
+#define FRONT_HIGH_THRESHOLD2  300
+
+#define FRONT_LOW_THRESHOLD   280
+#define FRONT_HIGH_THRESHOLD  270
 
 #define DIAG_LOW_THRESHOLD  180
 #define DIAG_HIGH_THRESHOLD 190
@@ -182,36 +185,119 @@ int sensors_readRight(){
 #define WALL_RIGHT_DIAG 0b1000
 #define WALL_RIGHT 0b10000
 
+#define DIAG_
+
+#include "leds.h"
 
 
-char sensors_interpretReadings(int * readings){
+char sensors_interpretReadings(volatile int * readings){
         static char interpretations = 0;
+        static char frontInter2 = 0;
 
-        if(readings[0] > SIDE_HIGH_THRESHOLD)
-            interpretations |= 0b00001;
         if(readings[0] < SIDE_LOW_THRESHOLD)
-            interpretations &= 0b11110;         
+            interpretations |= 0b10000;
+        if(readings[0] > SIDE_HIGH_THRESHOLD)
+            interpretations &= 0b01111;         
 
-        if(readings[1] > DIAG_HIGH_THRESHOLD)
-            interpretations |= 0b00010;
         if(readings[1] < DIAG_LOW_THRESHOLD)
-            interpretations &= 0b11101;  
+            interpretations |= 0b01000;
+        if(readings[1] > DIAG_HIGH_THRESHOLD)
+            interpretations &= 0b10111;  
 
-        if(readings[2] > FRONT_HIGH_THRESHOLD)
-            interpretations |= 0b00100;
         if(readings[2] < FRONT_LOW_THRESHOLD)
+            interpretations |= 0b00100;
+        if(readings[2] > FRONT_HIGH_THRESHOLD)
             interpretations &= 0b11011;  
 
-        if(readings[3] > SIDE_HIGH_THRESHOLD)
-            interpretations |= 0b01000;
         if(readings[3] < SIDE_LOW_THRESHOLD)
-            interpretations &= 0b10111;
+            interpretations |= 0b00010;
+        if(readings[3] > SIDE_HIGH_THRESHOLD)
+            interpretations &= 0b11101;
 
-        if(readings[4] > SIDE_HIGH_THRESHOLD)
-            interpretations |= 0b10000;
         if(readings[4] < SIDE_LOW_THRESHOLD)
-            interpretations &= 0b01111;
+            interpretations |= 0b00001;
+        if(readings[4] > SIDE_HIGH_THRESHOLD)
+            interpretations &= 0b11110;
 
-        return interpretations; 
+        if(readings[2] < FRONT_LOW_THRESHOLD2)
+            frontInter2 = 1;
+        if(readings[2] > FRONT_HIGH_THRESHOLD2)
+            frontInter2 = 0;
+
+        char ret = NO_TURN;
+
+        //digitalWrite(LED1, interpretations&0b10000);
+        //digitalWrite(LED2, interpretations&0b01000);
+        //digitalWrite(LED3, interpretations&0b00010);
+        //digitalWrite(LED4, interpretations&0b00001);
+        /*
+        if(interpretations == 0b11011){
+            return NO_TURN;
+        }
+        if(interpretations == 0b11101 || interpretations == 0b10111 || interpretations == 0b11001 || interpretations == 0b10011){
+            return SLOW_DOWN;
+        }
+        if(interpretations == 0b11100){
+            return RIGHT_TURN;
+        }
+        if(interpretations == 0b00111){
+            return LEFT_TURN;
+        }
+        if(interpretations == 0b11111){
+            return U_TURN;
+        }
+        if(interpretations == 0b00011){
+            return LEFT_FRONT_TURN;
+        }
+        if(interpretations == 0b11000){
+            return RIGHT_FRONT_TURN;
+        }
+        if(interpretations == 0b00000){
+            return ALL_TURN;
+        }
+        if(interpretations == 0b00100){
+            return LEFT_RIGHT_TURN;
+        }
+        return NO_TURN; 
+
+        */
+
+       char lWall = interpretations&0b10000;
+       char rWall = interpretations&0b00001;
+       char fWall = interpretations&0b00100;
+
+
+        if(lWall && !fWall && rWall){
+            return NO_TURN;
+        }
+        if(lWall && !rWall){
+            if(frontInter2)
+                return RIGHT_TURN;
+            else
+                return RIGHT_FRONT_TURN;
+        }
+        if(!lWall && rWall){
+            if(frontInter2)
+                return LEFT_TURN;
+            else
+                return LEFT_FRONT_TURN;
+        }
+        if(lWall && fWall && rWall){
+            return U_TURN;
+        }
+        if(!lWall && !fWall && rWall){
+            return LEFT_FRONT_TURN;
+        }
+        if(lWall && !fWall && !rWall){
+            return RIGHT_FRONT_TURN;
+        }
+        if(!lWall && !fWall && !rWall){
+            return ALL_TURN;
+        }
+        if(!lWall && fWall && !rWall){
+            return LEFT_RIGHT_TURN;
+        }
+        return NO_TURN; 
+
     
 }
